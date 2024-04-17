@@ -177,6 +177,8 @@ class LAMMPS():
         output_file = output_file if output_file else self.output_file
         last_data = last_data if last_data else md.write_data
         last_str = last_str if last_str else md.outstr
+        
+        print('\tLast_data variable in LAMMPS.run function: '+last_data)
 
         self.make_input(md, file_name=input_file)
 
@@ -1101,6 +1103,9 @@ class LAMMPS():
 
 class Analyze():
     def __init__(self, log_file='radon_md.log', **kwargs):
+    # def __init__(self, **kwargs):
+        # log_file = kwargs.get('log_file', 'radom_md.log')
+        print('analyze Analyze() lammps.py logfile: '+log_file)
         self.dfs = self.read_log(log_file)
         self.log_file = log_file
         self.in_file = kwargs.get('in_file', 'radon_md.dump')
@@ -1356,6 +1361,9 @@ class Analyze():
         if last and len(thermo_df) < last: last = None
 
         n = len(thermo_df) - init
+        # print(f'thermo_df={len(thermo_df)}')
+        # print(f'init={init}')
+        # print(f'n to decide={n}')
         if n <= 0:
             utils.radon_print('init=%i is out of range. Require init > %i' % (init, len(thermo_df)), level=3)
             return None
