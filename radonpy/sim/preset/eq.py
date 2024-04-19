@@ -413,56 +413,67 @@ class SimpleEq(Equilibration):
         lmp = lammps.LAMMPS(work_dir=self.work_dir, solver_path=self.solver_path)
         lmp.make_dat(self.mol, file_name=self.dat_file1, confId=confId)
         
-        # variable of last_data variable that can change.
-        last_data = self.dat_file # only 2 steps in this particular class
-        # print('variable last_data in relaxing: '+last_data)
+        # # variable of last_data variable that can change.
+        # last_data = self.dat_file # only 2 steps in this particular class
+        # # print('variable last_data in relaxing: '+last_data)
         
+        # # Initial system relaxation
+        # dt1 = datetime.datetime.now()
+        # utils.radon_print('Relaxation (eq1) by LAMMPS is running...', level=1)
+        # md1 = self.relaxing(comm_cutoff=kwargs.get('comm_cutoff', 8.0),
+        #                     last_data=last_data, 
+        #                     **kwargs)
+        # self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file1, 
+        #                    last_str=self.last_str1, last_data=last_data,
+        #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file1))
+        # utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file1))
+        # dt2 = datetime.datetime.now()
+        # utils.radon_print('Complete relaxation (eq1). Elapsed time = %s' % str(dt2-dt1), level=1)
+
+        # # NVT equilibration: 2 runs to slowly drive the system up to a temperature
+        # dt1 = datetime.datetime.now()
+        # utils.radon_print('NVT simulation (eq3) by LAMMPS is running...', level=1)
+        # md2 = self.NVTequ(max_temp=max_temp, nvt1_step=int(1000*nvt1_time), 
+        #                   nvt2_step=int(1000000*nvt2_time), log_file=self.log_file,
+        #                   dat_file=self.dat_file, dump_file=self.dump_file,
+        #                   xtc_file=self.xtc_file, last_str=self.last_str,
+        #                   last_data=self.last_data, **kwargs)
+        # self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file, 
+        #                    last_str=self.last_str, last_data=self.last_data,
+        #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file))
+        # utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file))
+        # dt2 = datetime.datetime.now()
+        # utils.radon_print('Complete NVT simulation (eq3). Elapsed time = %s' % str(dt2-dt1), level=1)
+
+
+        ##### Without taking care of the name of the last eq*.data file
+
         # Initial system relaxation
         dt1 = datetime.datetime.now()
         utils.radon_print('Relaxation (eq1) by LAMMPS is running...', level=1)
-        md1 = self.relaxing(comm_cutoff=kwargs.get('comm_cutoff', 8.0),
-                            last_data=last_data, 
-                            **kwargs)
+        md1 = self.relaxing(comm_cutoff=kwargs.get('comm_cutoff', 8.0), **kwargs)
         self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file1, 
-                           last_str=self.last_str1, last_data=last_data,
+                           last_str=self.last_str1, last_data=self.last_data1,
                            omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
         utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file1))
         utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file1))
         dt2 = datetime.datetime.now()
         utils.radon_print('Complete relaxation (eq1). Elapsed time = %s' % str(dt2-dt1), level=1)
-
+        
         # NVT equilibration: 2 runs to slowly drive the system up to a temperature
         dt1 = datetime.datetime.now()
-        utils.radon_print('NVT simulation (eq3) by LAMMPS is running...', level=1)
+        utils.radon_print('NVT simulation (eq2) by LAMMPS is running...', level=1)
         md2 = self.NVTequ(max_temp=max_temp, nvt1_step=int(1000*nvt1_time), 
-                          nvt2_step=int(1000000*nvt2_time), log_file=self.log_file,
-                          dat_file=self.dat_file, dump_file=self.dump_file,
-                          xtc_file=self.xtc_file, last_str=self.last_str,
-                          last_data=self.last_data, **kwargs)
-        self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file, 
-                           last_str=self.last_str, last_data=self.last_data,
+                          nvt2_step=int(1000000*nvt2_time), **kwargs)
+        self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file2, 
+                           last_str=self.last_str2, last_data=self.last_data2,
                            omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
-        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file))
-        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file))
+        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file2))
+        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file2))
         dt2 = datetime.datetime.now()
-        utils.radon_print('Complete NVT simulation (eq3). Elapsed time = %s' % str(dt2-dt1), level=1)
-
-
-
-
-
-        # # NVT equilibration: 2 runs to slowly drive the system up to a temperature
-        # dt1 = datetime.datetime.now()
-        # utils.radon_print('NVT simulation (eq2) by LAMMPS is running...', level=1)
-        # md2 = self.NVTequ(max_temp=max_temp, nvt1_step=int(1000*nvt1_time), 
-        #                   nvt2_step=int(1000000*nvt2_time), **kwargs)
-        # self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file2, 
-        #                    last_str=self.last_str2, last_data=self.last_data2,
-        #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
-        # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file2))
-        # utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file2))
-        # dt2 = datetime.datetime.now()
-        # utils.radon_print('Complete NVT simulation (eq2). Elapsed time = %s' % str(dt2-dt1), level=1)
+        utils.radon_print('Complete NVT simulation (eq2). Elapsed time = %s' % str(dt2-dt1), level=1)
 
         
         # dt1 = datetime.datetime.now()
@@ -746,6 +757,8 @@ class Additional(Equilibration):
         super().__init__(mol, prefix=prefix, work_dir=work_dir, solver_path=solver_path, **kwargs)
 
         self.idx = get_final_idx(self.work_dir) + 1 if idx == 0 else idx
+        
+        print('Index at definition of eqmd.Additional class: %i'%self.idx)
 
         self.in_file = kwargs.get('in_file', '%seq%i.in' % (self.prefix, self.idx))
         self.dat_file = kwargs.get('dat_file', '%seq%i.data' % (self.prefix, self.idx))

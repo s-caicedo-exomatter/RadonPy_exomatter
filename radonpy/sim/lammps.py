@@ -181,6 +181,11 @@ class LAMMPS():
         print('\tLast_data variable in LAMMPS.run function: '+last_data)
 
         self.make_input(md, file_name=input_file)
+        
+        
+        
+        
+        
 
         if not os.path.isfile(os.path.join(self.work_dir, input_file)):
             utils.radon_print('Cannot write LAMMPS input file.', level=2)
