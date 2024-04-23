@@ -91,6 +91,78 @@ class Equilibration(preset.Preset):
         return md
 
 
+
+    def nvt_eq(self, f_density=0.8, min_temp=10, max_temp=700, comm_cutoff=8.0, nvt1_steps=20000, 
+                 nvt2_steps=100000, nvt_steps=100000, **kwargs):
+
+        mass = calc.mol_mass(self.mol)
+        f_length = np.cbrt( (mass / const.NA) / (f_density / const.cm2ang**3)) / 2
+
+        # Initial relaxation and packing
+        md = MD()
+        md.pair_style = 'lj/cut'
+        md.cutoff_in = 3.0
+        md.cutoff_out = ''
+        md.kspace_style = 'none'
+        md.kspace_style_accuracy = ''
+        md.bond_style = self.bond_style
+        md.angle_style = self.angle_style
+        md.dihedral_style = self.dihedral_style
+        md.improper_style = self.improper_style
+        md.log_file = kwargs.get('log_file', self.log_file1)
+        md.dat_file = kwargs.get('dat_file', self.dat_file1)
+        md.dump_file = kwargs.get('dump_file', self.dump_file1)
+        md.xtc_file = kwargs.get('xtc_file', self.xtc_file1)
+        md.rst = True
+        md.outstr = kwargs.get('last_str', self.last_str1)
+        md.write_data = kwargs.get('last_data', self.last_data1)
+        md.add.append('comm_modify cutoff %f' % comm_cutoff)
+
+        md.add_min(min_style='cg')
+        md.add_md('nvt', nvt1_steps, time_step=0.1, shake=False, t_start=min_temp, t_stop=100.0, **kwargs)
+        md.add_md('nvt', nvt2_steps, time_step=1.0, shake=True, t_start=100.0, t_stop=max_temp, **kwargs)
+        md.add_md('nvt', nvt_steps, time_step=1.0, shake=True, t_start=max_temp, t_stop=max_temp, **kwargs)
+        md.wf[-1].add_deform(dftype='final', deform_fin_lo=-f_length, deform_fin_hi=f_length, axis='xyz')
+
+        return md
+    
+    def npt_eq(self, max_temp=700, press=1.0, npt1_steps=20000, 
+                 npt2_steps=100000, p_dump=1000, set_init_velocity=False, **kwargs):
+
+        # p_dump = 1000
+        md = MD()
+        md.pair_style = self.pair_style
+        md.cutoff_in = self.cutoff_in
+        md.cutoff_out = self.cutoff_out
+        md.kspace_style = self.kspace_style
+        md.kspace_style_accuracy = self.kspace_style_accuracy
+        md.bond_style = self.bond_style
+        md.angle_style = self.angle_style
+        md.dihedral_style = self.dihedral_style
+        md.improper_style = self.improper_style
+        md.neighbor = '%s bin' % self.neighbor_dis
+        md.log_file = kwargs.get('log_file', self.log_file2)
+        md.dat_file = kwargs.get('dat_file', self.dat_file2)
+        md.dump_file = kwargs.get('dump_file', self.dump_file2)
+        md.xtc_file = kwargs.get('xtc_file', self.xtc_file2)
+        md.rst = True
+        md.outstr = kwargs.get('last_str', self.last_str2)
+        md.write_data = kwargs.get('last_data', self.last_data2)
+        if set_init_velocity:
+            md.set_init_velocity = max_temp
+        #if polarizable:
+        #    md.add_drude()
+
+        md.add_md('npt', npt1_steps, time_step=0.1, shake=False, t_start=max_temp, t_stop=max_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.add_md('npt', npt2_steps, time_step=1.0, shake=True, t_start=max_temp, t_stop=max_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+
+        return md
+
+
+
+
     def packing(self, f_density=0.8, max_temp=700, comm_cutoff=8.0, **kwargs):
 
         mass = calc.mol_mass(self.mol)
@@ -125,49 +197,50 @@ class Equilibration(preset.Preset):
         return md
 
 
-    def NVTequ(self, max_temp=700.0, set_init_velocity=False, **kwargs):
+    # def NVTequ(self, max_temp=700.0, set_init_velocity=False, **kwargs):
 
-        p_dump = 1000
-        md = MD()
-        md.pair_style = self.pair_style
-        md.cutoff_in = self.cutoff_in
-        md.cutoff_out = self.cutoff_out
-        md.kspace_style = self.kspace_style
-        md.kspace_style_accuracy = self.kspace_style_accuracy
-        md.neighbor = '%s bin' % self.neighbor_dis
-        md.log_file = kwargs.get('log_file', self.log_file2)
-        md.dat_file = kwargs.get('dat_file', self.dat_file2)
-        md.dump_file = kwargs.get('dump_file', self.dump_file2)
-        md.xtc_file = kwargs.get('xtc_file', self.xtc_file2)
-        md.rst = True
-        md.outstr = kwargs.get('last_str', self.last_str2)
-        md.write_data = kwargs.get('last_data', self.last_data2)
+    #     p_dump = 1000
+    #     md = MD()
+    #     md.pair_style = self.pair_style
+    #     md.cutoff_in = self.cutoff_in
+    #     md.cutoff_out = self.cutoff_out
+    #     md.kspace_style = self.kspace_style
+    #     md.kspace_style_accuracy = self.kspace_style_accuracy
+    #     md.neighbor = '%s bin' % self.neighbor_dis
+    #     md.log_file = kwargs.get('log_file', self.log_file2)
+    #     md.dat_file = kwargs.get('dat_file', self.dat_file2)
+    #     md.dump_file = kwargs.get('dump_file', self.dump_file2)
+    #     md.xtc_file = kwargs.get('xtc_file', self.xtc_file2)
+    #     md.rst = True
+    #     md.outstr = kwargs.get('last_str', self.last_str2)
+    #     md.write_data = kwargs.get('last_data', self.last_data2)
         
-        print('\tName of dat_file variable in NVT: '+md.dat_file)
-        print('\tName of last_data variable in NVT: '+md.write_data)
-        if set_init_velocity:
-            md.set_init_velocity = max_temp
-        #if polarizable:
-        #    md.add_drude()
+    #     print('\tName of dat_file variable in NVT: '+md.dat_file)
+    #     print('\tName of last_data variable in NVT: '+md.write_data)
+    #     if set_init_velocity:
+    #         md.set_init_velocity = max_temp
+    #     #if polarizable:
+    #     #    md.add_drude()
         
-        nvt1_step = kwargs.get('nvt1_step', 20000)
-        nvt2_step = kwargs.get('nvt2_step', 5000000)
+    #     nvt1_step = kwargs.get('nvt1_step', 20000)
+    #     nvt2_step = kwargs.get('nvt2_step', 5000000)
 
-        md.add_md('nvt', nvt1_step, time_step=0.2, shake=False, 
-                  t_start=max_temp, t_stop=max_temp, p_dump=500, **kwargs)
-        md.add_md('nvt', nvt2_step, time_step=1.0, shake=True, 
-                  t_start=max_temp, t_stop=max_temp, p_dump=500, **kwargs)
-        # md.add_md('npt', 20000, time_step=1.0, shake=True, t_start=max_temp, t_stop=max_temp, p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+    #     md.add_md('nvt', nvt1_step, time_step=0.2, shake=False, 
+    #               t_start=max_temp, t_stop=max_temp, p_dump=500, **kwargs)
+    #     md.add_md('nvt', nvt2_step, time_step=1.0, shake=True, 
+    #               t_start=max_temp, t_stop=max_temp, p_dump=500, **kwargs)
+    #     # md.add_md('npt', 20000, time_step=1.0, shake=True, t_start=max_temp, t_stop=max_temp, p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
 
-        # a_temp = np.linspace(max_temp, temp, int(step/100000)+1)
-        # for i in range(len(a_temp)-1):
-        #     md.add_md('npt', 100000, time_step=1.0, shake=True, t_start=a_temp[i], t_stop=a_temp[i+1],
-        #               p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+    #     # a_temp = np.linspace(max_temp, temp, int(step/100000)+1)
+    #     # for i in range(len(a_temp)-1):
+    #     #     md.add_md('npt', 100000, time_step=1.0, shake=True, t_start=a_temp[i], t_stop=a_temp[i+1],
+    #     #               p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
 
-        return md
+    #     return md
 
 
-    def annealing(self, max_temp=700.0, temp=300.0, press=1.0, step=5000000, set_init_velocity=False, **kwargs):
+    def annealing(self, max_temp=700.0, temp=300.0, press=1.0, step=5000000, 
+                  set_init_velocity=False, **kwargs):
 
         p_dump = 1000
         md = MD()
@@ -382,7 +455,9 @@ class Relaxing(Equilibration):
 
 
 class SimpleEq(Equilibration):
-    def exec(self, confId=0, max_temp=700.0, nvt1_time=0.2, nvt2_time=5,
+    def exec(self, confId=0, f_density=0.8, max_temp=700.0, min_temp=10, press=1.0,
+             nvt1_time=0.02, nvt2_time=0.1, nvt_time=0.1,
+             npt1_time=0.02, npt2_time=0.1, npt_time=1,
              omp=1, mpi=1, gpu=0, intel='auto', opt='auto', **kwargs):
         """
         preset.eq.SimpleEq.exec
@@ -398,7 +473,7 @@ class SimpleEq(Equilibration):
         Optional args:
             confId: Target conformer ID (int)
             max_temp: Maximum temperature in NVT (float, K)
-            nvt1_time: time for the initial NVT simulation with 0.1 fs time step (float, ps)
+            nvt1_time: time for the initial NVT simulation with 0.1 fs time step (float, ns)
             nvt2_time: time for the second NVT simulation with 1 fs time step (float, ns)
             solver: lammps (str) 
             omp: Number of threads of OpenMP (int)
@@ -412,10 +487,55 @@ class SimpleEq(Equilibration):
         utils.MolToPDBFile(self.mol, os.path.join(self.work_dir, self.pdb_file))
         lmp = lammps.LAMMPS(work_dir=self.work_dir, solver_path=self.solver_path)
         lmp.make_dat(self.mol, file_name=self.dat_file1, confId=confId)
+        print('picke_file1: %s'%self.pickle_file1); print('picke_file2: %s'%self.pickle_file2); print('picke_file: %s'%self.pickle_file)
+        print('json_file1: %s'%self.json_file1); print('json_file2: %s'%self.json_file2); print('json_file: %s'%self.json_file)
+        print('save_dir: %s'%self.save_dir)
         
+        # Initial system relaxation:
+        dt1 = datetime.datetime.now()
+        utils.radon_print('Relaxation & NVT (eq1) by LAMMPS is running...', level=1)
+        md1 = self.nvt_eq(f_density=f_density, comm_cutoff=kwargs.get('comm_cutoff', 8.0), 
+                            min_temp=min_temp, max_temp=max_temp, nvt1_steps=int(1000000*nvt1_time), 
+                            nvt2_steps=int(1000000*nvt2_time), nvt_steps=int(1000000*nvt_time), 
+                          **kwargs)
+        self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file1, 
+                           last_str=self.last_str1, last_data=self.last_data1,
+                           omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file1))
+        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file1))
+        dt2 = datetime.datetime.now()
+        utils.radon_print('Completed NVT (eq1). Elapsed time = %s' % str(dt2-dt1), level=1)
+        
+        # NPT equilibration:
+        dt1 = datetime.datetime.now()
+        utils.radon_print('NPT equilibration (eq2) by LAMMPS is running...', level=1)
+        md2 = self.npt_eq(max_temp=max_temp, press=press, npt1_steps=int(1000000*npt1_time), 
+                          npt2_steps=int(1000000*npt2_time), set_init_velocity=True, **kwargs)
+        self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file2, 
+                           last_str=self.last_str2, last_data=self.last_data2,
+                           omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file2))
+        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file2))
+        dt2 = datetime.datetime.now()
+        utils.radon_print('Complete NPT equilibration (eq2). Elapsed time = %s' % str(dt2-dt1), level=1)
+        
+        # Sampling in NPT
+        dt1 = datetime.datetime.now()
+        utils.radon_print('Sampling simulation (eq3) by LAMMPS is running...', level=1)
+        md3 = self.sampling(temp=max_temp, press=press, step=int(1000000*npt_time), **kwargs)
+        self.mol = lmp.run(md3, mol=self.mol, confId=confId, input_file=self.in_file, last_str=self.last_str, 
+                           last_data=self.last_data,
+                           omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file))
+        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file))
+        dt2 = datetime.datetime.now()
+        utils.radon_print('Complete sampling simulation (eq3). Elapsed time = %s' % str(dt2-dt1), level=1)
+
+       
+       
         # # variable of last_data variable that can change.
         # last_data = self.dat_file # only 2 steps in this particular class
-        # # print('variable last_data in relaxing: '+last_data)
+        # print('variable last_data in relaxing: '+last_data)
         
         # # Initial system relaxation
         # dt1 = datetime.datetime.now()
@@ -448,37 +568,39 @@ class SimpleEq(Equilibration):
         # utils.radon_print('Complete NVT simulation (eq3). Elapsed time = %s' % str(dt2-dt1), level=1)
 
 
-        ##### Without taking care of the name of the last eq*.data file
+        #### Without taking care of the name of the last eq*.data file
 
-        # Initial system relaxation
-        dt1 = datetime.datetime.now()
-        utils.radon_print('Relaxation (eq1) by LAMMPS is running...', level=1)
-        md1 = self.relaxing(comm_cutoff=kwargs.get('comm_cutoff', 8.0), **kwargs)
-        self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file1, 
-                           last_str=self.last_str1, last_data=self.last_data1,
-                           omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
-        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file1))
-        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file1))
-        dt2 = datetime.datetime.now()
-        utils.radon_print('Complete relaxation (eq1). Elapsed time = %s' % str(dt2-dt1), level=1)
+        # # Initial system relaxation
+        # dt1 = datetime.datetime.now()
+        # utils.radon_print('Relaxation (eq1) by LAMMPS is running...', level=1)
+        # md1 = self.relaxing(comm_cutoff=kwargs.get('comm_cutoff', 8.0), **kwargs)
+        # self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file1, 
+        #                    last_str=self.last_str1, last_data=self.last_data1,
+        #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file1))
+        # utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file1))
+        # dt2 = datetime.datetime.now()
+        # utils.radon_print('Complete relaxation (eq1). Elapsed time = %s' % str(dt2-dt1), level=1)
         
-        # NVT equilibration: 2 runs to slowly drive the system up to a temperature
-        dt1 = datetime.datetime.now()
-        utils.radon_print('NVT simulation (eq2) by LAMMPS is running...', level=1)
-        md2 = self.NVTequ(max_temp=max_temp, nvt1_step=int(1000*nvt1_time), 
-                          nvt2_step=int(1000000*nvt2_time), **kwargs)
-        self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file2, 
-                           last_str=self.last_str2, last_data=self.last_data2,
-                           omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
-        utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file2))
-        utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file2))
-        dt2 = datetime.datetime.now()
-        utils.radon_print('Complete NVT simulation (eq2). Elapsed time = %s' % str(dt2-dt1), level=1)
+        # # NVT equilibration: 2 runs to slowly drive the system up to a temperature
+        # dt1 = datetime.datetime.now()
+        # utils.radon_print('NVT simulation (eq2) by LAMMPS is running...', level=1)
+        # md2 = self.NVTequ(max_temp=max_temp, nvt1_step=int(1000*nvt1_time), 
+        #                   nvt2_step=int(1000000*nvt2_time), 
+        #                   last_data=self.last_data2,
+        #                   **kwargs)
+        # self.mol = lmp.run(md2, mol=self.mol, confId=confId, input_file=self.in_file2, 
+        #                    last_str=self.last_str2, last_data=self.last_data2,
+        #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
+        # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file2))
+        # utils.pickle_dump(self.mol, os.path.join(self.save_dir, self.pickle_file2))
+        # dt2 = datetime.datetime.now()
+        # utils.radon_print('Complete NVT simulation (eq2). Elapsed time = %s' % str(dt2-dt1), level=1)
 
         
         # dt1 = datetime.datetime.now()
         # utils.radon_print('Sampling simulation (eq3) by LAMMPS is running...', level=1)
-        # md3 = self.sampling(temp=temp, press=press, step=int(1000000*eq_step), **kwargs)
+        # md3 = self.sampling(temp=max_temp, press=press, step=int(1000000*eq_step), **kwargs)
         # self.mol = lmp.run(md3, mol=self.mol, confId=confId, input_file=self.in_file, last_str=self.last_str, last_data=self.last_data,
         #                    omp=omp, mpi=mpi, gpu=gpu, intel=intel, opt=opt)
         # utils.MolToJSON(self.mol, os.path.join(self.save_dir, self.json_file))
@@ -487,24 +609,6 @@ class SimpleEq(Equilibration):
         # utils.radon_print('Complete sampling simulation (eq3). Elapsed time = %s' % str(dt2-dt1), level=1)
 
         return self.mol
-
-
-    # def make_lammps_input(self, confId=0, f_density=0.8, max_temp=700.0, temp=300.0, press=1.0, ann_step=5, eq_step=8, **kwargs):
-
-    #     utils.MolToPDBFile(self.mol, os.path.join(self.work_dir, self.pdb_file))
-    #     lmp = lammps.LAMMPS(work_dir=self.work_dir, solver_path=self.solver_path)
-    #     lmp.make_dat(self.mol, file_name=self.dat_file1, confId=confId)
-
-    #     md1 = self.packing(f_density=f_density, max_temp=max_temp, comm_cutoff=kwargs.get('comm_cutoff', 8.0), **kwargs)
-    #     lmp.make_input(md1, file_name=self.in_file1)
-
-    #     md2 = self.annealing(max_temp=max_temp, temp=temp, press=press, step=int(1000000*ann_step), set_init_velocity=True, **kwargs)
-    #     lmp.make_input(md2, file_name=self.in_file2)
-
-    #     md3 = self.sampling(temp=temp, press=press, step=int(1000000*eq_step), **kwargs)
-    #     lmp.make_input(md3, file_name=self.in_file)
-
-    #     return True
 
 
 class TempSeries(Equilibration):
@@ -840,6 +944,9 @@ def get_final_idx(work_dir, name='eq'):
     last_jlist2 = glob.glob(os.path.join(work_dir, '*%s[0-9][0-9]_last.json' % (name)))
     last_jlist3 = glob.glob(os.path.join(work_dir, '*%s[0-9][0-9][0-9]_last.json' % (name)))
 
+    print('jlist length: %i'%len(last_jlist))
+    print('plist length: %i'%len(last_plist))
+    print('list length: %i'%len(last_list))
 
     if len(last_jlist) > 0:
         last_list = last_jlist
@@ -881,6 +988,7 @@ def get_final_idx(work_dir, name='eq'):
 
         for file in last_list:
             file = os.path.basename(file)
+            print(file)
 
             m = re.search(r'eq[0-9]+_last\.data$', file)
             if m is not None:
