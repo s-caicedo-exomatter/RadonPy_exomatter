@@ -1110,7 +1110,7 @@ class Analyze():
     def __init__(self, log_file='radon_md.log', **kwargs):
     # def __init__(self, **kwargs):
         # log_file = kwargs.get('log_file', 'radom_md.log')
-        print('analyze Analyze() lammps.py logfile: '+log_file)
+        # print('analyze Analyze() lammps.py logfile: '+log_file)
         self.dfs = self.read_log(log_file)
         self.log_file = log_file
         self.in_file = kwargs.get('in_file', 'radon_md.dump')

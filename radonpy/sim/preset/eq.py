@@ -80,6 +80,18 @@ class Dynamics(preset.Preset):
         return md
 
 
+    def analyze(self):
+        # print('analyze eq.py logfile: '+self.log_file)
+        analy = Equilibration_analyze(
+            log_file  = os.path.join(self.work_dir, self.log_file),
+            traj_file = os.path.join(self.work_dir, self.xtc_file),
+            pdb_file  = os.path.join(self.work_dir, self.pdb_file),
+            dat_file  = os.path.join(self.work_dir, self.dat_file),
+            rg_file   = os.path.join(self.work_dir, self.rg_file)
+        )
+
+        return analy
+
 class Equilibration(preset.Preset):
     def __init__(self, mol, prefix='', work_dir=None, save_dir=None, solver_path=None, **kwargs):
         """
