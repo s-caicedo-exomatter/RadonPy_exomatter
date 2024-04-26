@@ -40,6 +40,7 @@ class Dynamics(preset.Preset):
         temp = kwargs.get('temp', None)
         npt1_steps = kwargs.get('npt1_steps', 100000)
         npt2_steps = kwargs.get('npt2_steps', 1000000)
+        npt_steps = kwargs.get('npt_steps', 2000000)
 
         if temp is None:
             start_temp = kwargs.get('start_temp', 300)
@@ -72,9 +73,11 @@ class Dynamics(preset.Preset):
         if kwargs.get('set_init_velocity', False):
             md.set_init_velocity = start_temp
         
-        md.add_md('npt', npt1_steps, time_step=1.0, shake=True, t_start=start_temp, t_stop=goal_temp, 
+        md.add_md('npt', npt1_steps, time_step=0.1, shake=True, t_start=start_temp, t_stop=goal_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
         md.add_md('npt', npt2_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.add_md('npt', npt_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
 
         return md
@@ -499,6 +502,7 @@ class TempStep(Dynamics):
         
         npt1_time = kwargs.get('npt1_time', 0.1)
         npt2_time = kwargs.get('npt2_time', 1.0)
+        npt_time = kwargs.get('npt_time', 2.0)
         
         utils.MolToPDBFile(self.mol, os.path.join(self.work_dir, self.pdb_file))
         lmp = lammps.LAMMPS(work_dir=self.work_dir, solver_path=self.solver_path)
@@ -511,7 +515,8 @@ class TempStep(Dynamics):
                         #    start_temp=kwargs.get('start_temp'), 
                         #    goal_temp=kwargs.get('goal_temp'),
                            npt1_steps=int(1000000*npt1_time), 
-                           npt2_steps=int(1000000*npt2_time), 
+                           npt2_steps=int(1000000*npt2_time),
+                           npt_steps=int(1000000*npt_time), 
                            set_init_velocity=True, relax=False, **kwargs)
         self.mol = lmp.run(md1, mol=self.mol, confId=confId, input_file=self.in_file, 
                            last_str=self.last_str, last_data=self.last_data,
@@ -611,7 +616,7 @@ class SimpleEq(Equilibration):
         
         nvt1_time = kwargs.get('nvt1_time', 0.02)
         nvt2_time = kwargs.get('nvt2_time', 0.1)
-        nvt_time = kwargs.get('nvt_time', 0.1)
+        nvt_time = kwargs.get('nvt_time', 0.5)
         npt1_time = kwargs.get('npt1_time', 0.02)
         npt2_time = kwargs.get('npt2_time', 0.1)
         npt_time = kwargs.get('npt_time', 0.1)
