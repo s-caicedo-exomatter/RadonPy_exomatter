@@ -1,0 +1,6 @@
+radonpy/__pycache__/**
+radonpy/core/__pycache__/**
+radonpy/ff/__pycache__/**
+radonpy/sim/__pycache__/**
+radonpy/sim/preset/__pycache__/**
+timer.dat
