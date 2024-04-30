@@ -1140,6 +1140,8 @@ class Analyze():
         self.compress_T_data = {}
         self.compress_S_data = {}
         self.bulk_mod_T_data = {}
+        self.poisson_rat_data = {}
+        self.youngs_modulus_data = {}
         self.bulk_mod_S_data = {}
         self.volume_exp_data = {}
         self.linear_exp_data = {}
@@ -1647,6 +1649,68 @@ class Analyze():
         """
 
         return 1 / cls.isothermal_compressibility(thermo_df, temp=temp, init=init, last=last)
+
+
+    @classmethod
+    def poisson_ratio(cls, thermo_df, init=0, last=None, **kwargs):
+        """
+        LAMMPS.poisson_ratio
+
+        Calculate Poisson ratio from thermodynamic data in a log file. The volumetric change and a cubic, isotropic system is assumed:
+        p_ratio = [1- L*Var(V)/V/Var(L)]/2
+
+        Args:
+            thermo_df: Pandas Data Frame of thermodynamic data
+
+        Optional args:
+            init: Initial step (int)
+            last: Last step (int)
+
+        Return:
+            Poisson's ratio (float, arb.u.)
+        """
+
+        if 'Volume' in thermo_df.columns:
+            V = thermo_df['Volume'].to_numpy() * 1e-30 # Angstrom**3 -> m**3
+        else:
+            V = thermo_df['Lx'].to_numpy() * thermo_df['Ly'].to_numpy() * thermo_df['Lz'].to_numpy() * 1e-30 # Angstrom**3 -> m**3
+
+        L = thermo_df['Lx'].to_numpy() * 1e-10 # Angstrom
+
+        mV = V[init:last].mean()
+        mL = L[init:last].mean()
+        V_var = np.var(V[init:last])
+        L_var = np.var(L[init:last])
+        
+        p_ratio = 1/2 *(1- mL*V_var/mV/L_var)
+
+        return p_ratio
+    
+    
+    @classmethod
+    def youngs_modulus(cls, thermo_df, temp=None, press=1.0, mass=None, init=0, last=None):
+        """
+        LAMMPS.youngs_modulus
+
+        Calculate Young's modulus as a function of the Bulk modulus (K) and Poisson ratio (v). It is assumed a cubic, isotropic system:
+        E = 3K(1-2v)
+
+        Args:
+            thermo_df: Pandas Data Frame of thermodynamic data
+
+        Optional args:
+            temp: Temperature (If None, temperature in thermodynamic data is used) (float, K)
+            init: Initial step (int)
+            last: Last step (int)
+
+        Return:
+            Young's modulus (float, Pa = kg / (m s**2))
+        """
+        
+        v = cls.poisson_ratio(thermo_df, init=init, last=last)
+        K = cls.bulk_modulus(thermo_df, temp=temp, init=init, last=last)
+
+        return 3 * K * (1 - 2 * v)
 
 
     @classmethod
@@ -2282,6 +2346,14 @@ class Analyze():
                             name='bulk_modulus', ylabel='Bulk modulus [Pa]', f_width=f_width,
                             temp=temp, press=press, init=init, width=width, last=last, printout=printout, save=save_dir)
         
+        self.poisson_rat_data = self.analyze_thermo_fluctuation(self.poisson_ratio,
+                            name='poisson_ratio', ylabel='Poisson ratio [arb.u.]', f_width=f_width,
+                            temp=temp, press=press, init=init, width=width, last=last, printout=printout, save=save_dir)
+        
+        self.youngs_modulus_data = self.analyze_thermo_fluctuation(self.youngs_modulus,
+                            name='youngs_modulus', ylabel='Youngs modulus [Pa]', f_width=f_width,
+                            temp=temp, press=press, init=init, width=width, last=last, printout=printout, save=save_dir)
+        
         self.bulk_mod_S_data = self.analyze_thermo_fluctuation(self.isentropic_bulk_modulus,
                             name='isentropic_bulk_modulus', ylabel='Isentropic bulk modulus [Pa]', f_width=f_width,
                             temp=temp, press=press, init=init, width=width, last=last, printout=printout, save=save_dir)
@@ -2303,6 +2375,8 @@ class Analyze():
             'compressibility': self.compress_T_data.get('mean', np.nan),
             'isentropic_compressibility': self.compress_S_data.get('mean', np.nan),
             'bulk_modulus': self.bulk_mod_T_data.get('mean', np.nan),
+            'poisson_ratio': self.poisson_rat_data.get('mean', np.nan),
+            'youngs_modulus': self.youngs_modulus_data.get('mean', np.nan),
             'isentropic_bulk_modulus': self.bulk_mod_S_data.get('mean', np.nan),
             'volume_expansion': self.volume_exp_data.get('mean', np.nan),
             'linear_expansion': self.linear_exp_data.get('mean', np.nan),
