@@ -79,6 +79,8 @@ class Dynamics(preset.Preset):
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
         md.add_md('npt', npt_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.wf[-1].add_rg(file=self.rg_file)
+        md.wf[-1].add_msd()
 
         return md
 
