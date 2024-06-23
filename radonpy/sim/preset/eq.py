@@ -20,6 +20,7 @@ __version__ = '0.2.9'
 
 class Dynamics(preset.Preset):
     def __init__(self, mol, prefix='', work_dir=None, save_dir=None, solver_path=None, **kwargs):
+        
         super().__init__(mol, prefix=prefix, work_dir=work_dir, save_dir=save_dir, solver_path=solver_path, **kwargs)
         
         self.in_file = kwargs.get('in_file', '%sdyn.in' % self.prefix)
@@ -77,8 +78,43 @@ class Dynamics(preset.Preset):
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
         md.add_md('npt', npt2_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        # SCD: If I decide to separate this into 2 subsequent simulations, comment out the following:
         md.add_md('npt', npt_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.wf[-1].add_rg(file=self.rg_file)
+        md.wf[-1].add_msd()
+
+        return md
+    
+    # The sampling function in case I decide to separate into 2 simulations.
+    def sampling(self, temp=300.0, press=1.0, step=5000000, **kwargs):
+
+        p_dump = 1000
+        md = MD()
+        md.pair_style = self.pair_style
+        md.cutoff_in = self.cutoff_in
+        md.cutoff_out = self.cutoff_out
+        md.kspace_style = self.kspace_style
+        md.kspace_style_accuracy = self.kspace_style_accuracy
+        md.bond_style = self.bond_style
+        md.angle_style = self.angle_style
+        md.dihedral_style = self.dihedral_style
+        md.improper_style = self.improper_style
+        md.neighbor = '%s bin' % self.neighbor_dis
+        md.log_file = kwargs.get('log_file', self.log_file)
+        md.dat_file = kwargs.get('dat_file', self.dat_file)
+        md.dump_file = kwargs.get('dump_file', self.dump_file)
+        md.xtc_file = kwargs.get('xtc_file', self.xtc_file)
+        md.rst = True
+        md.outstr = kwargs.get('last_str', self.last_str)
+        md.write_data = kwargs.get('last_data', self.last_data)
+        if kwargs.get('set_init_velocity', False):
+            md.set_init_velocity = temp
+        #if polarizable:
+        #    md.add_drude()
+
+        md.add_md('npt', step, time_step=1.0, shake=True, t_start=temp, t_stop=temp,
+                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
         md.wf[-1].add_rg(file=self.rg_file)
         md.wf[-1].add_msd()
 
@@ -140,6 +176,56 @@ class Equilibration(preset.Preset):
         self.json_file = kwargs.get('json_file', '%seq3_last.json' % self.prefix)
     
     
+    def npt_dyn(self, press=1.0, p_dump=1000, **kwargs):
+        
+        temp = kwargs.get('temp', None)
+        npt1_steps = kwargs.get('npt1_steps', 100000)
+        npt2_steps = kwargs.get('npt2_steps', 1000000)
+        npt_steps = kwargs.get('npt_steps', 2000000)
+
+        if temp is None:
+            start_temp = kwargs.get('start_temp', 300)
+            goal_temp = kwargs.get('goal_temp', 300)
+        else:
+            start_temp = temp
+            goal_temp = temp
+            
+        print('Start temperature: %f K'%start_temp)
+        print('Goal temperature: %f K'%goal_temp)
+        
+        md = MD()
+        md.pair_style = self.pair_style
+        md.cutoff_in = self.cutoff_in
+        md.cutoff_out = self.cutoff_out
+        md.kspace_style = self.kspace_style
+        md.kspace_style_accuracy = self.kspace_style_accuracy
+        md.bond_style = self.bond_style
+        md.angle_style = self.angle_style
+        md.dihedral_style = self.dihedral_style
+        md.improper_style = self.improper_style
+        md.neighbor = '%s bin' % self.neighbor_dis
+        md.log_file = kwargs.get('log_file', self.log_file)
+        md.dat_file = kwargs.get('dat_file', self.dat_file)
+        md.dump_file = kwargs.get('dump_file', self.dump_file)
+        md.xtc_file = kwargs.get('xtc_file', self.xtc_file)
+        md.rst = True
+        md.outstr = kwargs.get('last_str', self.last_str)
+        md.write_data = kwargs.get('last_data', self.last_data)
+        if kwargs.get('set_init_velocity', False):
+            md.set_init_velocity = start_temp
+        
+        md.add_md('npt', npt1_steps, time_step=0.1, shake=True, t_start=start_temp, t_stop=goal_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.add_md('npt', npt2_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        # SCD: If I decide to separate this into 2 subsequent simulations, comment out the following:
+        md.add_md('npt', npt_steps, time_step=1.0, shake=True, t_start=goal_temp, t_stop=goal_temp, 
+                  p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
+        md.wf[-1].add_rg(file=self.rg_file)
+        md.wf[-1].add_msd()
+
+        return md
+    
     def relaxing(self, comm_cutoff=8.0, etol=1.0e-4, ftol=1.0e-6, maxiter=10000, maxeval=100000, **kwargs):
         
         # Modified by me (Sebastian): setup a simple relaxation. No dynamics involved
@@ -193,16 +279,23 @@ class Equilibration(preset.Preset):
             max_temp = temp
         
         # Initial relaxation and packing
+        p_dump = 1000
         md = MD()
-        md.pair_style = 'lj/cut'
-        md.cutoff_in = 3.0
-        md.cutoff_out = ''
-        md.kspace_style = 'none'
-        md.kspace_style_accuracy = ''
+        md.pair_style = self.pair_style
+        # md.pair_style = 'lj/cut'
+        md.cutoff_in = self.cutoff_in
+        md.cutoff_out = self.cutoff_out
+        # md.cutoff_in = 3.0
+        # md.cutoff_out = ''
+        md.kspace_style = self.kspace_style
+        md.kspace_style_accuracy = self.kspace_style_accuracy
+        # md.kspace_style = 'none'
+        # md.kspace_style_accuracy = ''
         md.bond_style = self.bond_style
         md.angle_style = self.angle_style
         md.dihedral_style = self.dihedral_style
         md.improper_style = self.improper_style
+        md.neighbor = '%s bin' % self.neighbor_dis
         md.log_file = kwargs.get('log_file', self.log_file1)
         md.dat_file = kwargs.get('dat_file', self.dat_file1)
         md.dump_file = kwargs.get('dump_file', self.dump_file1)
@@ -215,7 +308,7 @@ class Equilibration(preset.Preset):
         if relax:
             md.add_min(min_style='cg')
         
-        md.add_md('nvt', nvt1_steps, time_step=0.1, shake=not relax, t_start=start_temp, t_stop=min_temp, **kwargs)
+        md.add_md('nvt', nvt1_steps, time_step=0.2, shake=not relax, t_start=start_temp, t_stop=min_temp, **kwargs)
         md.add_md('nvt', nvt2_steps, time_step=1.0, shake=True, t_start=min_temp, t_stop=max_temp, **kwargs)
         md.add_md('nvt', nvt_steps, time_step=1.0, shake=True, t_start=max_temp, t_stop=max_temp, **kwargs)
         md.wf[-1].add_deform(dftype='final', deform_fin_lo=-f_length, deform_fin_hi=f_length, axis='xyz')
@@ -244,7 +337,7 @@ class Equilibration(preset.Preset):
             min_temp = temp
             max_temp = temp
         
-        # p_dump = 1000
+        p_dump = 1000
         md = MD()
         md.pair_style = self.pair_style
         md.cutoff_in = self.cutoff_in
@@ -271,7 +364,7 @@ class Equilibration(preset.Preset):
         if relax:
             md.add_min(min_style='cg')
         
-        md.add_md('npt', npt1_steps, time_step=0.1, shake=not relax, t_start=start_temp, t_stop=min_temp, 
+        md.add_md('npt', npt1_steps, time_step=0.2, shake=not relax, t_start=start_temp, t_stop=min_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
         md.add_md('npt', npt2_steps, time_step=1.0, shake=True, t_start=min_temp, t_stop=max_temp, 
                   p_start=press, p_stop=press, p_dump=p_dump, **kwargs)
@@ -475,28 +568,37 @@ class Equilibration_analyze(lammps.Analyze):
         self.volexp_sma_sd_crit = kwargs.get('volexp_sma_sd_crit', None)
 
 
-class TempStep(Dynamics):
+class TempStep(Equilibration):
+    def __init__(self, mol, prefix='', work_dir=None, save_dir=None, solver_path=None, idx=0, **kwargs):
+        
+        super().__init__(mol, prefix=prefix, work_dir=work_dir, save_dir=save_dir, solver_path=solver_path, **kwargs)
+        
+        self.idx = get_final_idx(self.work_dir, name='dyn') + 1 if idx == 0 else idx
+        print('Index at definition of eqmd.TempStep class: %i'%self.idx)
+        
+        self.in_file = kwargs.get('in_file', '%sdyn%i.in' % (self.prefix, self.idx))
+        self.dat_file = kwargs.get('dat_file', '%sdyn%i.data' % (self.prefix, self.idx))
+        self.pdb_file = kwargs.get('pdb_file', '%sdyn%i.pdb' % (self.prefix, self.idx))
+        self.log_file = kwargs.get('log_file', '%sdyn%i.log' % (self.prefix, self.idx))
+        self.dump_file = kwargs.get('dump_file', '%sdyn%i.dump' % (self.prefix, self.idx))
+        self.xtc_file = kwargs.get('xtc_file', '%sdyn%i.xtc' % (self.prefix, self.idx))
+        self.rg_file = kwargs.get('rg_file', '%srgDyn%i.profile' % (self.prefix, self.idx))
+        self.last_str = kwargs.get('last_str', '%sdyn%i_last.dump' % (self.prefix, self.idx))
+        self.last_data = kwargs.get('last_data', '%sdyn%i_last.data' % (self.prefix, self.idx))
+        self.pickle_file = kwargs.get('pickle_file', '%sdyn%i_last.pickle' % (self.prefix, self.idx))
+        self.json_file = kwargs.get('json_file', '%sdyn%i_last.json' % (self.prefix, self.idx))
+    
     def exec(self, confId=0, press=1.0, omp=1, mpi=1, gpu=0, intel='auto', opt='auto', **kwargs):
         """
-        preset.eq.SimpleEq.exec
+        preset.eq.TempStep.exec
 
-        Execution of a simple equilibration scheme
-        Simple relaxation and NVT dynamics:
-         1. nvt1_time * 10E3 steps at 0.2 fs
-         2. ann_step * 10E6 steps at 1.0 fs
-
+        Execution of a MD in a temperature/pressure. Useful for quasi-equilibrium calculations
+        
         Args:
             mol: RDKit Mol object
         
         Optional args:
-            confId: Target conformer ID (int)
-            max_temp: Maximum temperature in NVT (float, K)
-            nvt1_time: time for the initial NVT simulation with 0.1 fs time step (float, ns)
-            nvt2_time: time for the second NVT simulation with 1 fs time step (float, ns)
-            solver: lammps (str) 
-            omp: Number of threads of OpenMP (int)
-            mpi: Number of MPI process (int)
-            gpu: Number of GPU (int)
+            Fill out...
 
         Returns:
             RDKit Mol object
@@ -1012,7 +1114,9 @@ def get_final_idx(work_dir, name='eq'):
 
     print('jlist length: %i'%len(last_jlist))
     print('plist length: %i'%len(last_plist))
-    print('list length: %i'%len(last_list))
+    print('last_list: %i'%len(last_list))
+    print('last_list2: %i'%len(last_list2))
+    print('last_list2: %i'%len(last_list3))
 
     if len(last_jlist) > 0:
         last_list = last_jlist
@@ -1055,8 +1159,11 @@ def get_final_idx(work_dir, name='eq'):
         for file in last_list:
             file = os.path.basename(file)
             print(file)
+            
+            pattern = fr'{name}[0-9]+_last\.data$'
 
-            m = re.search(r'eq[0-9]+_last\.data$', file)
+            m = re.search(pattern, file)
+            print(m)
             if m is not None:
                 mi = re.search(r'[0-9]+', m.group())
                 i = int(mi.group())
