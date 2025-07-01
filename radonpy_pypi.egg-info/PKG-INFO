@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: radonpy-pypi
 Version: 0.2.9
 Summary: RadonPy is a Python library to automate physical property calculations for polymer informatics.
@@ -35,6 +35,20 @@ Requires-Dist: rdkit>=2020.03
 Requires-Dist: mdtraj>=1.9
 Provides-Extra: lammps
 Requires-Dist: lammps>=2020.03.03; extra == "lammps"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: platform
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
 
 ![logo](https://user-images.githubusercontent.com/83273612/160471242-40d7d7f1-d2cd-4658-b4e1-75f5e608665d.png)
 
