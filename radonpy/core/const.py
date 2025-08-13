@@ -23,7 +23,7 @@ mpi4py_avail = False
 lammps_exec = os.getenv('LAMMPS_EXEC', 'lmp_mpi')
 
 # %i: number of process
-mpi_cmd = 'mpirun -n %i'
+mpi_cmd = 'mpirun --use-hwthread-cpus -np %i'
 
 # 1st %s: Path of the LAMMPS binary
 # 2nd %s: Accelerate options (GPU, OpenMP, Intel)
